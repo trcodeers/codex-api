@@ -42,3 +42,5 @@ Seed also creates a sample aspirant user:
 
 Mongo connection logs are printed on app startup (connected / error / disconnected).
 
+On app startup, an idempotent seed runs to ensure default exams/questions and the sample user exist (without deleting existing data).
+

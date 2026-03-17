@@ -11,6 +11,7 @@ import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { AttemptsModule } from './attempts/attempts.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { DatabaseModule } from './database/database.module';
 
 const logger = new Logger('MongoConnection');
 
@@ -26,11 +27,17 @@ const logger = new Logger('MongoConnection');
       useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('mongo.uri'),
         connectionFactory: (connection: Connection) => {
-          connection.on('connected', () => {
-            logger.log(`MongoDB connected successfully at ${connection.host}:${connection.port}/${connection.name}`);
-          });
+          void connection
+            .asPromise()
+            .then(() => {
+              logger.log(`MongoDB connected successfully at ${connection.host}:${connection.port}/${connection.name}`);
+            })
+            .catch((error: Error) => {
+              logger.error(`MongoDB connection failed: ${error.message}`);
+            });
+
           connection.on('error', (error) => {
-            logger.error(`MongoDB connection failed: ${error.message}`);
+            logger.error(`MongoDB connection error: ${error.message}`);
           });
           connection.on('disconnected', () => {
             logger.warn('MongoDB disconnected');
@@ -39,6 +46,7 @@ const logger = new Logger('MongoConnection');
         },
       }),
     }),
+    DatabaseModule,
     AuthModule,
     UsersModule,
     ExamsModule,
