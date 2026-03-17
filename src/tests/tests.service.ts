@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { isValidObjectId, Model } from 'mongoose';
+import { Model } from 'mongoose';
 import { Test, TestDocument } from './schemas/test.schema';
 import { Exam, ExamDocument } from '../exams/schemas/exam.schema';
 
@@ -12,10 +12,7 @@ export class TestsService {
   ) {}
 
   async findByExamId(examIdentifier: string) {
-    const exam = isValidObjectId(examIdentifier)
-      ? await this.examModel.findOne({ $or: [{ _id: examIdentifier }, { slug: examIdentifier }] }).exec()
-      : await this.examModel.findOne({ slug: examIdentifier }).exec();
-
+    const exam = await this.examModel.findOne({ $or: [{ _id: examIdentifier }, { slug: examIdentifier }] }).exec();
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }

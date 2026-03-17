@@ -17,13 +17,6 @@ Production-ready modular backend for mock test preparation platform.
    npm run start:dev
    ```
 
-## Scripts
-
-- `npm run build` - TypeScript production build to `dist/`
-- `npm start` - Run compiled app from `dist/main.js`
-- `npm run start:dev` - Run app with `ts-node`
-- `npm run seed` - Seed exams, tests, and questions
-
 ## API Base Path
 
 All routes are prefixed with `/api`.

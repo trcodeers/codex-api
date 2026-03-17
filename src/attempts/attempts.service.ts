@@ -33,7 +33,7 @@ export class AttemptsService {
       total: attempt.total,
       date: dayjs(attempt.createdAt).format('DD MMM YYYY'),
       timeTaken: attempt.timeTaken,
-      answers: this.serializeAnswers(attempt.answers),
+      answers: attempt.answers,
     };
   }
 
@@ -52,14 +52,7 @@ export class AttemptsService {
       total: attempt.total,
       date: dayjs(attempt.createdAt).format('DD MMM YYYY'),
       timeTaken: attempt.timeTaken,
-      answers: this.serializeAnswers(attempt.answers),
+      answers: Object.fromEntries((attempt.answers as Map<string, number>).entries()),
     }));
-  }
-
-  private serializeAnswers(answers: Map<string, number> | Record<string, number>) {
-    if (answers instanceof Map) {
-      return Object.fromEntries(answers.entries());
-    }
-    return answers;
   }
 }
