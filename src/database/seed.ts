@@ -3,11 +3,13 @@ import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Module } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
+import * as bcrypt from 'bcrypt';
 import configuration from '../config/configuration';
 import { validateEnv } from '../config/validate-env';
 import { Exam, ExamSchema } from '../exams/schemas/exam.schema';
 import { Test, TestSchema } from '../tests/schemas/test.schema';
 import { Question, QuestionSchema } from '../questions/schemas/question.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { Question, QuestionSchema } from '../questions/schemas/question.schema';
       { name: Exam.name, schema: ExamSchema },
       { name: Test.name, schema: TestSchema },
       { name: Question.name, schema: QuestionSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
 })
@@ -30,8 +33,9 @@ async function seed() {
   const examModel = app.get<Model<Exam>>(getModelToken(Exam.name));
   const testModel = app.get<Model<Test>>(getModelToken(Test.name));
   const questionModel = app.get<Model<Question>>(getModelToken(Question.name));
+  const userModel = app.get<Model<User>>(getModelToken(User.name));
 
-  await Promise.all([examModel.deleteMany({}), testModel.deleteMany({}), questionModel.deleteMany({})]);
+  await Promise.all([examModel.deleteMany({}), testModel.deleteMany({}), questionModel.deleteMany({}), userModel.deleteMany({})]);
 
   const exams = await examModel.insertMany([
     { slug: 'upsc', name: 'UPSC', description: 'Union Public Service Commission - Civil Services Examination', icon: 'BookOpen' },
@@ -81,6 +85,20 @@ async function seed() {
       },
     ]);
   }
+
+  const hashedPassword = await bcrypt.hash('12345', 10);
+  await userModel.create({
+    name: 'Sample User',
+    email: 'sample@gmail.com',
+    password: hashedPassword,
+    role: 'Aspirant',
+    goal: 'UPSC Civil Services',
+    avatar: 'https://api.dicebear.com/9.x/initials/svg?seed=Sample%20User',
+    joinedDate: new Date(),
+  });
+
+  // eslint-disable-next-line no-console
+  console.log('Seeded sample user profile: sample@gmail.com (role: Aspirant)');
 
   // eslint-disable-next-line no-console
   console.log('Seed completed successfully');

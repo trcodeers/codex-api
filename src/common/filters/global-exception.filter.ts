@@ -11,7 +11,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-    const message = exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
+    const message = this.extractMessage(exception);
 
     this.logger.error(
       `${request.method} ${request.url}`,
@@ -20,10 +20,31 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       success: false,
-      statusCode: status,
       message,
+      statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+
+  private extractMessage(exception: unknown): string {
+    if (!(exception instanceof HttpException)) {
+      return 'Internal server error';
+    }
+
+    const payload = exception.getResponse();
+    if (typeof payload === 'string') {
+      return payload;
+    }
+
+    if (typeof payload === 'object' && payload !== null && 'message' in payload) {
+      const message = (payload as { message?: string | string[] }).message;
+      if (Array.isArray(message)) {
+        return message.join(', ');
+      }
+      return message ?? exception.message;
+    }
+
+    return exception.message;
   }
 }
