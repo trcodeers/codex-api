@@ -5,6 +5,11 @@ import { QuestionsService } from '../questions/questions.service';
 export class TestsController {
   constructor(private readonly questionsService: QuestionsService) {}
 
+  @Get('')
+  getAllTests() {
+    return 'this.questionsService.getAllTests()';
+  }
+
   @Get(':testId/questions')
   getQuestions(@Param('testId') testId: string) {
     return this.questionsService.findByTestId(testId);
