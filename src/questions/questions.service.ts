@@ -17,19 +17,24 @@ export class QuestionsService {
     const questions = await this.questionModel.find({ _id: { $in: questionIds } }).exec();
     const questionMap = new Map(questions.map((question) => [question.id, question]));
 
-    return questionIds
-      .map((questionId) => questionMap.get(String(questionId)))
-      .filter((question): question is QuestionDocument => Boolean(question))
-      .map((question) => ({
-        id: question.id,
-        subject: question.subject,
-        examTags: question.examTags,
-        difficulty: question.difficulty,
-        text: question.text,
-        images: question.images,
-        options: question.options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation,
-      }));
+    const orderedQuestions: QuestionDocument[] = [];
+    for (const questionId of questionIds) {
+      const question = questionMap.get(String(questionId));
+      if (question) {
+        orderedQuestions.push(question);
+      }
+    }
+
+    return orderedQuestions.map((question) => ({
+      id: question.id,
+      subject: question.subject,
+      examTags: question.examTags,
+      difficulty: question.difficulty,
+      text: question.text,
+      images: question.images,
+      options: question.options,
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation,
+    }));
   }
 }
