@@ -14,8 +14,8 @@ export class Exam {
   @Prop({ default: '' })
   description!: string;
 
-  @Prop({ default: '' })
-  icon!: string;
+  @Prop({ default: true })
+  isActive!: boolean;
 }
 
 export const ExamSchema = SchemaFactory.createForClass(Exam);

@@ -44,3 +44,7 @@ Mongo connection logs are printed on app startup (connected / error / disconnect
 
 On app startup, an idempotent seed runs to ensure default exams/questions and the sample user exist (without deleting existing data).
 
+## Admin APIs
+
+Protected admin-only endpoints are available under `/api/admin` for question management and section-based test publishing workflows.
+

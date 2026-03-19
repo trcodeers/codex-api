@@ -8,12 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-  app.enableCors({
-    origin: ['https://ais-dev-hhpi5apkdqlmlgi6pu3u7w-301705739685.asia-east1.run.app'], // 👈 Only allow this domain
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-
-  });
+  app.enableCors();
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

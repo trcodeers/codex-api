@@ -8,14 +8,10 @@ export class CreateUserDto {
   email!: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(5)
   password!: string;
 
   @IsOptional()
   @IsString()
   goal?: string;
-
-  @IsOptional()
-  @IsString()
-  avatar?: string;
 }

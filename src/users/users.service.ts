@@ -26,7 +26,6 @@ export class UsersService {
       ...createUserDto,
       password: hashedPassword,
       goal: createUserDto.goal ?? '',
-      avatar: createUserDto.avatar ?? '',
     });
 
     return user.save();

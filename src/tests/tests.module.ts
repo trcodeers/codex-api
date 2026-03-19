@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Test, TestSchema } from './schemas/test.schema';
 import { TestsService } from './tests.service';
@@ -12,7 +12,7 @@ import { QuestionsModule } from '../questions/questions.module';
       { name: Test.name, schema: TestSchema },
       { name: Exam.name, schema: ExamSchema },
     ]),
-    QuestionsModule,
+    forwardRef(() => QuestionsModule),
   ],
   controllers: [TestsController],
   providers: [TestsService],

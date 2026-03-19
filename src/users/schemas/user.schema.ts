@@ -20,12 +20,6 @@ export class User {
   @Prop({ default: '' })
   goal!: string;
 
-  @Prop({ default: '' })
-  avatar!: string;
-
-  @Prop({ default: () => new Date() })
-  joinedDate!: Date;
-
   createdAt!: Date;
 }
 

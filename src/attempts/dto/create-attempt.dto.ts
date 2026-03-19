@@ -1,4 +1,4 @@
-import { IsMongoId, IsNumber, IsObject, IsString, Min } from 'class-validator';
+import { IsMongoId, IsNumber, IsObject, Min } from 'class-validator';
 
 export class CreateAttemptDto {
   @IsMongoId()
@@ -9,11 +9,20 @@ export class CreateAttemptDto {
   score!: number;
 
   @IsNumber()
-  @Min(1)
+  @Min(0)
   total!: number;
 
-  @IsString()
-  timeTaken!: string;
+  @IsNumber()
+  @Min(0)
+  correct!: number;
+
+  @IsNumber()
+  @Min(0)
+  wrong!: number;
+
+  @IsNumber()
+  @Min(0)
+  timeTaken!: number;
 
   @IsObject()
   answers!: Record<string, number>;

@@ -17,9 +17,8 @@ export class UsersController {
       name: user.name,
       email: user.email,
       role: user.role,
-      joinedDate: dayjs(user.joinedDate).format('MMM DD, YYYY'),
+      joinedDate: dayjs(user.createdAt).format('MMM DD, YYYY'),
       goal: user.goal,
-      avatar: user.avatar,
     };
   }
 }

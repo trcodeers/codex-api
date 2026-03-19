@@ -10,6 +10,7 @@ import { ExamsModule } from './exams/exams.module';
 import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { AttemptsModule } from './attempts/attempts.module';
+import { AdminModule } from './admin/admin.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { DatabaseModule } from './database/database.module';
 
@@ -53,6 +54,7 @@ const logger = new Logger('MongoConnection');
     TestsModule,
     QuestionsModule,
     AttemptsModule,
+    AdminModule,
   ],
 })
 export class AppModule implements NestModule {

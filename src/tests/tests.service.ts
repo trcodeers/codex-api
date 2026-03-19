@@ -20,16 +20,23 @@ export class TestsService {
       throw new NotFoundException('Exam not found');
     }
 
-    const tests = await this.testModel.find({ examId: exam._id }).exec();
-    return tests.map((test) => ({
-      id: test.id,
-      examId: exam.slug,
-      title: test.title,
-      questionsCount: test.questionsCount,
-      duration: test.duration,
-      totalMarks: test.totalMarks,
-      difficulty: test.difficulty,
-    }));
+    const tests = await this.testModel.find({ examId: exam._id, isActive: true }).exec();
+    return tests.map((test) => {
+      const questionsCount = test.sections.reduce((count, section) => count + section.questionIds.length, 0);
+      return {
+        id: test.id,
+        examId: exam.slug,
+        title: test.title,
+        sections: test.sections,
+        questionsCount,
+        marksPerQuestion: test.marksPerQuestion,
+        negativeMarks: test.negativeMarks,
+        duration: test.duration,
+        totalMarks: test.totalMarks,
+        isActive: test.isActive,
+        expiresAt: test.expiresAt,
+      };
+    });
   }
 
   async findById(testId: string) {

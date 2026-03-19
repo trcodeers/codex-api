@@ -1,28 +1,16 @@
-import {
-  ArrayMinSize,
-  IsArray,
-  IsBoolean,
-  IsDateString,
-  IsMongoId,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-  ValidateNested,
-} from 'class-validator';
 import { Type } from 'class-transformer';
+import { ArrayMinSize, IsArray, IsDateString, IsMongoId, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
-class CreateTestSectionDto {
+class CreateAdminTestSectionDto {
   @IsString()
   name!: string;
 
   @IsArray()
-  @ArrayMinSize(1)
   @IsMongoId({ each: true })
   questionIds!: string[];
 }
 
-export class CreateTestDto {
+export class CreateAdminTestDto {
   @IsMongoId()
   examId!: string;
 
@@ -32,8 +20,8 @@ export class CreateTestDto {
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => CreateTestSectionDto)
-  sections!: CreateTestSectionDto[];
+  @Type(() => CreateAdminTestSectionDto)
+  sections!: CreateAdminTestSectionDto[];
 
   @IsNumber()
   @Min(0)
@@ -50,9 +38,6 @@ export class CreateTestDto {
   @IsNumber()
   @Min(0)
   totalMarks!: number;
-
-  @IsBoolean()
-  isActive!: boolean;
 
   @IsOptional()
   @IsDateString()

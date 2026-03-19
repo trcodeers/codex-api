@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsBoolean, IsString } from 'class-validator';
 
 export class CreateExamDto {
   @IsString()
@@ -10,6 +10,6 @@ export class CreateExamDto {
   @IsString()
   description!: string;
 
-  @IsString()
-  icon!: string;
+  @IsBoolean()
+  isActive!: boolean;
 }
