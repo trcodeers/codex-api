@@ -9,10 +9,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: true,
+    origin: ['https://ais-dev-hhpi5apkdqlmlgi6pu3u7w-301705739685.asia-east1.run.app'], // 👈 Only allow this domain
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   app.useGlobalPipes(
     new ValidationPipe({
