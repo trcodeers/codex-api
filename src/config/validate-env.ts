@@ -1,5 +1,12 @@
 import { plainToInstance } from 'class-transformer';
-import { IsNotEmpty, IsNumberString, IsOptional, IsString, validateSync } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  validateSync,
+} from 'class-validator';
 
 class EnvironmentVariables {
   @IsOptional()
@@ -21,6 +28,26 @@ class EnvironmentVariables {
   @IsOptional()
   @IsNumberString()
   BCRYPT_SALT_ROUNDS?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SESSION_SECRET!: string;
+
+  @IsOptional()
+  @IsString()
+  SESSION_COOKIE_NAME?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  SESSION_COOKIE_MAX_AGE?: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SESSION_COOKIE_SECURE?: string;
+
+  @IsOptional()
+  @IsIn(['strict', 'lax', 'none'])
+  SESSION_COOKIE_SAME_SITE?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

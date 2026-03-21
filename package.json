@@ -24,6 +24,7 @@
     "class-validator": "^0.14.1",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
+    "express-session": "^1.18.1",
     "mongoose": "^8.9.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@nestjs/testing": "^10.4.15",
     "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.5",
     "@types/passport-jwt": "^4.0.1",
