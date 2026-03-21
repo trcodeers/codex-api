@@ -48,3 +48,11 @@ On app startup, an idempotent seed runs to ensure default exams/questions and th
 
 Protected admin-only endpoints are available under `/api/admin` for question management and section-based test publishing workflows.
 
+## Test Session APIs
+
+The backend also exposes authenticated session APIs for starting, resuming, syncing, and submitting in-progress tests:
+- `POST /api/tests/:testId/start-session`
+- `GET /api/test-sessions/:sessionId`
+- `PATCH /api/test-sessions/:sessionId`
+- `POST /api/test-sessions/:sessionId/submit`
+

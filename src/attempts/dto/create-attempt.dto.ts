@@ -5,7 +5,6 @@ export class CreateAttemptDto {
   testId!: string;
 
   @IsNumber()
-  @Min(0)
   score!: number;
 
   @IsNumber()

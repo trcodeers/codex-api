@@ -11,6 +11,7 @@ import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { AttemptsModule } from './attempts/attempts.module';
 import { AdminModule } from './admin/admin.module';
+import { TestSessionsModule } from './test-sessions/test-sessions.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { DatabaseModule } from './database/database.module';
 
@@ -55,6 +56,7 @@ const logger = new Logger('MongoConnection');
     QuestionsModule,
     AttemptsModule,
     AdminModule,
+    TestSessionsModule,
   ],
 })
 export class AppModule implements NestModule {

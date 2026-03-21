@@ -13,7 +13,7 @@ export class Attempt {
   @Prop({ type: Types.ObjectId, ref: Test.name, required: true, index: true })
   testId!: Types.ObjectId;
 
-  @Prop({ required: true, min: 0 })
+  @Prop({ required: true })
   score!: number;
 
   @Prop({ required: true, min: 0 })
