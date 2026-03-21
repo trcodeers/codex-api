@@ -28,12 +28,25 @@ Production-ready modular backend for mock test preparation platform.
 
 All routes are prefixed with `/api`.
 
+## Session Auth
+
+The API now uses cookie-backed sessions alongside JWT responses:
+- `POST /api/auth/register` creates a user and stores `userId` in the session.
+- `POST /api/auth/login` authenticates and stores `userId` in the session.
+- `GET /api/auth/me` returns the currently authenticated session user.
+
+Configure session behavior with these environment variables:
+- `SESSION_SECRET`
+- `SESSION_COOKIE_NAME`
+- `SESSION_COOKIE_MAX_AGE`
+- `SESSION_COOKIE_SECURE`
+- `SESSION_COOKIE_SAME_SITE`
+
 ## Seed Data
 
 ```bash
 npm run seed
 ```
-
 
 Seed also creates a sample aspirant user:
 - Email: `sample@gmail.com`
@@ -55,4 +68,3 @@ The backend also exposes authenticated session APIs for starting, resuming, sync
 - `GET /api/test-sessions/:sessionId`
 - `PATCH /api/test-sessions/:sessionId`
 - `POST /api/test-sessions/:sessionId/submit`
-
