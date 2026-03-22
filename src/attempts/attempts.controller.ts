@@ -1,22 +1,27 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtPayload } from '../common/types/jwt-payload.type';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { SessionRequest } from '../auth/types/session-request.type';
 import { CreateAttemptDto } from './dto/create-attempt.dto';
+import { GetAttemptHistoryQueryDto } from './dto/get-attempt-history-query.dto';
 import { AttemptsService } from './attempts.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(SessionAuthGuard)
 @Controller('attempts')
 export class AttemptsController {
   constructor(private readonly attemptsService: AttemptsService) {}
 
   @Post()
-  submitAttempt(@CurrentUser() user: JwtPayload, @Body() createAttemptDto: CreateAttemptDto) {
-    return this.attemptsService.create(user.sub, createAttemptDto);
+  submitAttempt(@Req() req: SessionRequest, @Body() createAttemptDto: CreateAttemptDto) {
+    return this.attemptsService.create(req.session.userId!, createAttemptDto);
   }
 
   @Get()
-  getAttemptHistory(@CurrentUser() user: JwtPayload) {
-    return this.attemptsService.findByUser(user.sub);
+  getAttemptHistory(@Req() req: SessionRequest, @Query() query: GetAttemptHistoryQueryDto) {
+    return this.attemptsService.findByUser(req.session.userId!, query);
+  }
+
+  @Get(':attemptId')
+  getAttemptDetails(@Req() req: SessionRequest, @Param('attemptId') attemptId: string) {
+    return this.attemptsService.findAttemptDetails(req.session.userId!, attemptId);
   }
 }

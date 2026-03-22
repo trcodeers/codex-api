@@ -4,9 +4,14 @@ import { Attempt, AttemptSchema } from './schemas/attempt.schema';
 import { AttemptsService } from './attempts.service';
 import { AttemptsController } from './attempts.controller';
 import { TestsModule } from '../tests/tests.module';
+import { QuestionsModule } from '../questions/questions.module';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Attempt.name, schema: AttemptSchema }]), TestsModule],
+  imports: [
+    MongooseModule.forFeature([{ name: Attempt.name, schema: AttemptSchema }]),
+    TestsModule,
+    QuestionsModule,
+  ],
   controllers: [AttemptsController],
   providers: [AttemptsService],
 })
