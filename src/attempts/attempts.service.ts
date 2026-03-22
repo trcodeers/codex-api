@@ -19,6 +19,7 @@ export class AttemptsService {
 
   async create(userId: string, dto: CreateAttemptDto) {
     const test = await this.testsService.findById(dto.testId);
+    const now = new Date();
 
     const attempt = await this.attemptModel.create({
       userId: new Types.ObjectId(userId),
@@ -28,7 +29,14 @@ export class AttemptsService {
       correct: dto.correct,
       wrong: dto.wrong,
       timeTaken: dto.timeTaken,
+      startTime: now,
+      duration: test.duration,
+      status: 'submitted',
       answers: dto.answers,
+      questionStatuses: this.buildQuestionStatuses(test.sections, dto.answers),
+      bookmarks: [],
+      lastActivityAt: now,
+      submittedAt: now,
     });
 
     const totalQuestions = this.countQuestions(test.sections);
@@ -44,6 +52,7 @@ export class AttemptsService {
       accuracy: this.calculateAccuracy(attempt.correct, totalQuestions),
       createdAt: attempt.createdAt.toISOString().slice(0, 10),
       timeTaken: attempt.timeTaken,
+      status: attempt.status,
     };
   }
 
@@ -52,15 +61,14 @@ export class AttemptsService {
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
+    const filter = {
+      userId: new Types.ObjectId(userId),
+      status: { $in: ['submitted', 'expired'] },
+    };
+
     const [attempts, total] = await Promise.all([
-      this.attemptModel
-        .find({ userId: new Types.ObjectId(userId) })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.attemptModel.countDocuments({ userId: new Types.ObjectId(userId) }).exec(),
+      this.attemptModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+      this.attemptModel.countDocuments(filter).exec(),
     ]);
 
     const testIds = [...new Set(attempts.map((attempt) => String(attempt.testId)))];
@@ -82,6 +90,7 @@ export class AttemptsService {
           wrong: attempt.wrong,
           accuracy: this.calculateAccuracy(attempt.correct, totalQuestions),
           createdAt: attempt.createdAt.toISOString().slice(0, 10),
+          status: attempt.status,
         };
       }),
       pagination: {
@@ -113,7 +122,8 @@ export class AttemptsService {
       .lean()
       .exec();
     const questionMap = new Map(questions.map((question) => [String(question._id), question]));
-    const answers = this.serializeAnswers(attempt.answers);
+    const answers = this.serializeNumericMap(attempt.answers);
+    const questionStatuses = this.serializeStringMap(attempt.questionStatuses);
     const totalQuestions = orderedQuestionIds.length;
 
     return {
@@ -126,6 +136,7 @@ export class AttemptsService {
       wrong: attempt.wrong,
       accuracy: this.calculateAccuracy(attempt.correct, totalQuestions),
       timeTaken: attempt.timeTaken,
+      status: attempt.status,
       sections: test.sections.map((section) => {
         let correct = 0;
         let wrong = 0;
@@ -167,12 +178,28 @@ export class AttemptsService {
             options: question.options,
             correctAnswer: question.correctAnswer,
             selectedAnswer: selectedAnswer ?? null,
+            status: questionStatuses[questionId] ?? 'unattempted',
             isCorrect: selectedAnswer === question.correctAnswer,
             explanation: question.explanation,
           },
         ];
       }),
     };
+  }
+
+  private buildQuestionStatuses(
+    sections: Array<{ questionIds: Array<Types.ObjectId | string> }>,
+    answers: Record<string, number>,
+  ) {
+    const statuses: Record<string, string> = {};
+
+    for (const section of sections) {
+      for (const questionId of section.questionIds.map((value) => String(value))) {
+        statuses[questionId] = answers[questionId] === undefined ? 'unattempted' : 'attempted';
+      }
+    }
+
+    return statuses;
   }
 
   private countQuestions(sections: Array<{ questionIds: Array<Types.ObjectId | string> }>) {
@@ -187,10 +214,20 @@ export class AttemptsService {
     return Number(((correct / totalQuestions) * 100).toFixed(2));
   }
 
-  private serializeAnswers(answers: Map<string, number> | Record<string, number>) {
+  private serializeNumericMap(answers: Map<string, number> | Record<string, number>) {
     if (answers instanceof Map) {
       return Object.fromEntries(answers.entries());
     }
     return answers;
+  }
+
+  private serializeStringMap(statuses: Map<string, string> | Record<string, string> | undefined) {
+    if (!statuses) {
+      return {};
+    }
+    if (statuses instanceof Map) {
+      return Object.fromEntries(statuses.entries());
+    }
+    return statuses;
   }
 }

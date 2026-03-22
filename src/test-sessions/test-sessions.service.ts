@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { TestSession, TestSessionDocument } from './schemas/test-session.schema';
 import { Test, TestDocument } from '../tests/schemas/test.schema';
 import { Question, QuestionDocument } from '../questions/schemas/question.schema';
 import { Attempt, AttemptDocument } from '../attempts/schemas/attempt.schema';
@@ -10,7 +9,6 @@ import { UpdateTestSessionDto } from './dto/update-test-session.dto';
 @Injectable()
 export class TestSessionsService {
   constructor(
-    @InjectModel(TestSession.name) private readonly testSessionModel: Model<TestSessionDocument>,
     @InjectModel(Test.name) private readonly testModel: Model<TestDocument>,
     @InjectModel(Question.name) private readonly questionModel: Model<QuestionDocument>,
     @InjectModel(Attempt.name) private readonly attemptModel: Model<AttemptDocument>,
@@ -18,17 +16,38 @@ export class TestSessionsService {
 
   async startSession(userId: string, testId: string) {
     const test = await this.findActiveTestOrThrow(testId);
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + test.duration * 60 * 1000);
+    const existingAttempt = await this.attemptModel
+      .findOne({ userId: new Types.ObjectId(userId), testId: test._id })
+      .sort({ createdAt: -1 })
+      .exec();
 
-    const session = await this.testSessionModel.create({
+    if (existingAttempt) {
+      if (existingAttempt.status === 'active' && this.isFinished(existingAttempt)) {
+        await this.finalizeAttempt(existingAttempt, test, 'expired');
+        throw new BadRequestException('Test already attempted');
+      }
+
+      if (existingAttempt.status === 'active') {
+        return this.buildSessionResponse(existingAttempt, test);
+      }
+
+      throw new BadRequestException('Test already attempted');
+    }
+
+    const now = new Date();
+    const session = await this.attemptModel.create({
       userId: new Types.ObjectId(userId),
       testId: test._id,
+      score: 0,
+      total: test.totalMarks,
+      correct: 0,
+      wrong: 0,
+      timeTaken: 0,
       startTime: now,
-      expiresAt,
       duration: test.duration,
       status: 'active',
       answers: {},
+      questionStatuses: this.buildQuestionStatusSeed(test),
       bookmarks: [],
       lastActivityAt: now,
     });
@@ -40,8 +59,8 @@ export class TestSessionsService {
     const session = await this.findSessionOrThrow(sessionId, userId);
     const test = await this.findTestOrThrow(String(session.testId));
 
-    if (this.isExpired(session)) {
-      return this.finishExpiredSession(session, test);
+    if (session.status === 'active' && this.isFinished(session)) {
+      await this.finalizeAttempt(session, test, 'expired');
     }
 
     return this.buildSessionResponse(session, test);
@@ -51,12 +70,24 @@ export class TestSessionsService {
     const session = await this.findSessionOrThrow(sessionId, userId);
     const test = await this.findTestOrThrow(String(session.testId));
 
-    if (this.isExpired(session)) {
-      return this.finishExpiredSession(session, test);
+    if (session.status !== 'active') {
+      throw new BadRequestException('Test session already finished');
+    }
+    if (this.isFinished(session)) {
+      await this.finalizeAttempt(session, test, 'expired');
+      return this.buildSessionResponse(session, test);
     }
 
+    const answers = this.serializeNumericMap(session.answers);
+    const questionStatuses = this.serializeStringMap(session.questionStatuses);
+
     if (dto.answers) {
-      session.set('answers', dto.answers);
+      for (const [questionId, selectedAnswer] of Object.entries(dto.answers)) {
+        answers[questionId] = selectedAnswer;
+        questionStatuses[questionId] = 'attempted';
+      }
+      session.set('answers', answers);
+      session.set('questionStatuses', questionStatuses);
     }
     if (dto.bookmarks) {
       session.bookmarks = [...new Set(dto.bookmarks)];
@@ -70,25 +101,18 @@ export class TestSessionsService {
   async submitSession(userId: string, sessionId: string) {
     const session = await this.findSessionOrThrow(sessionId, userId);
     const test = await this.findTestOrThrow(String(session.testId));
-    const attempt = await this.createAttemptFromSession(session, test);
 
-    await this.testSessionModel.findByIdAndDelete(session.id).exec();
+    if (session.status === 'submitted') {
+      return this.buildSubmitResponse(session, test);
+    }
 
-    return {
-      success: true,
-      message: 'Test submitted successfully',
-      attempt: {
-        id: attempt.id,
-        score: attempt.score,
-        total: attempt.total,
-        correct: attempt.correct,
-        wrong: attempt.wrong,
-        timeTaken: attempt.timeTaken,
-      },
-    };
+    const finalStatus = this.isFinished(session) ? 'expired' : 'submitted';
+    await this.finalizeAttempt(session, test, finalStatus);
+
+    return this.buildSubmitResponse(session, test);
   }
 
-  private async buildSessionResponse(session: TestSessionDocument, test: TestDocument) {
+  private async buildSessionResponse(session: AttemptDocument, test: TestDocument) {
     const questions = await this.fetchOrderedQuestions(test);
     return {
       sessionId: session.id,
@@ -96,11 +120,17 @@ export class TestSessionsService {
       title: test.title,
       duration: session.duration,
       startTime: session.startTime,
-      expiresAt: session.expiresAt,
       status: session.status,
-      answers: this.serializeAnswers(session.answers),
+      score: session.score,
+      total: session.total,
+      correct: session.correct,
+      wrong: session.wrong,
+      timeTaken: session.timeTaken,
+      answers: this.serializeNumericMap(session.answers),
+      questionStatuses: this.serializeStringMap(session.questionStatuses),
       bookmarks: session.bookmarks,
       remainingTimeSeconds: this.getRemainingTimeSeconds(session),
+      isFinished: this.isFinished(session),
       sections: test.sections.map((section, index) => ({
         index,
         name: section.name,
@@ -110,34 +140,43 @@ export class TestSessionsService {
     };
   }
 
-  private async finishExpiredSession(session: TestSessionDocument, test: TestDocument) {
-    const attempt = await this.createAttemptFromSession(session, test);
-    await this.testSessionModel.findByIdAndDelete(session.id).exec();
-
+  private buildSubmitResponse(session: AttemptDocument, test: TestDocument) {
     return {
-      sessionId: session.id,
-      testId: String(test._id),
-      status: 'expired',
-      remainingTimeSeconds: 0,
-      redirectToTests: true,
-      attemptId: attempt.id,
+      success: true,
+      message: session.status === 'submitted' ? 'Test submitted successfully' : 'Test finished successfully',
+      attempt: {
+        id: session.id,
+        testId: String(test._id),
+        status: session.status,
+        score: session.score,
+        total: session.total,
+        correct: session.correct,
+        wrong: session.wrong,
+        timeTaken: session.timeTaken,
+      },
     };
   }
 
-  private async createAttemptFromSession(session: TestSessionDocument, test: TestDocument) {
+  private async finalizeAttempt(session: AttemptDocument, test: TestDocument, status: 'submitted' | 'expired') {
     const questionIds = test.sections.flatMap((section) => section.questionIds);
     const questions = await this.questionModel.find({ _id: { $in: questionIds } }).exec();
     const questionMap = new Map(questions.map((question) => [question.id, question]));
-    const answers = this.serializeAnswers(session.answers);
+    const answers = this.serializeNumericMap(session.answers);
+    const questionStatuses = this.serializeStringMap(session.questionStatuses);
 
     let correct = 0;
     let wrong = 0;
 
-    for (const [questionId, selectedAnswer] of Object.entries(answers)) {
+    for (const questionId of questionIds.map((value) => String(value))) {
       const question = questionMap.get(questionId);
-      if (!question) {
+      const selectedAnswer = answers[questionId];
+
+      if (!question || selectedAnswer === undefined) {
+        questionStatuses[questionId] = questionStatuses[questionId] ?? 'unattempted';
         continue;
       }
+
+      questionStatuses[questionId] = 'attempted';
       if (question.correctAnswer === selectedAnswer) {
         correct += 1;
       } else {
@@ -145,22 +184,21 @@ export class TestSessionsService {
       }
     }
 
-    const score = correct * test.marksPerQuestion - wrong * test.negativeMarks;
-    const timeTaken = Math.min(
+    session.correct = correct;
+    session.wrong = wrong;
+    session.score = correct * test.marksPerQuestion - wrong * test.negativeMarks;
+    session.total = test.totalMarks;
+    session.timeTaken = Math.min(
       test.duration * 60,
       Math.max(0, Math.floor((Date.now() - session.startTime.getTime()) / 1000)),
     );
+    session.status = status;
+    session.submittedAt = new Date();
+    session.lastActivityAt = new Date();
+    session.set('questionStatuses', questionStatuses);
+    await session.save();
 
-    return this.attemptModel.create({
-      userId: session.userId,
-      testId: test._id,
-      score,
-      total: test.totalMarks,
-      correct,
-      wrong,
-      timeTaken,
-      answers,
-    });
+    return session;
   }
 
   private async fetchOrderedQuestions(test: TestDocument) {
@@ -188,15 +226,12 @@ export class TestSessionsService {
   }
 
   private async findSessionOrThrow(sessionId: string, userId: string) {
-    const session = await this.testSessionModel.findById(sessionId).exec();
+    const session = await this.attemptModel.findById(sessionId).exec();
     if (!session) {
       throw new NotFoundException('Test session not found');
     }
     if (String(session.userId) !== userId) {
       throw new ForbiddenException('You do not have access to this test session');
-    }
-    if (session.status === 'submitted') {
-      throw new BadRequestException('Test session already submitted');
     }
     return session;
   }
@@ -220,18 +255,32 @@ export class TestSessionsService {
     return test;
   }
 
-  private isExpired(session: TestSessionDocument) {
-    return session.expiresAt.getTime() <= Date.now();
+  private buildQuestionStatusSeed(test: TestDocument) {
+    return Object.fromEntries(
+      test.sections.flatMap((section) => section.questionIds.map((questionId) => [String(questionId), 'unattempted'])),
+    );
   }
 
-  private getRemainingTimeSeconds(session: TestSessionDocument) {
-    return Math.max(0, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000));
+  private isFinished(session: AttemptDocument | { startTime: Date; duration: number }) {
+    return (Date.now() - session.startTime.getTime()) / 1000 >= session.duration * 60;
   }
 
-  private serializeAnswers(answers: Map<string, number> | Record<string, number>) {
+  private getRemainingTimeSeconds(session: AttemptDocument) {
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - session.startTime.getTime()) / 1000));
+    return Math.max(0, session.duration * 60 - elapsedSeconds);
+  }
+
+  private serializeNumericMap(answers: Map<string, number> | Record<string, number>) {
     if (answers instanceof Map) {
       return Object.fromEntries(answers.entries());
     }
     return answers;
+  }
+
+  private serializeStringMap(statuses: Map<string, string> | Record<string, string>) {
+    if (statuses instanceof Map) {
+      return Object.fromEntries(statuses.entries());
+    }
+    return statuses;
   }
 }

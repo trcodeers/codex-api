@@ -1,36 +1,31 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtPayload } from '../common/types/jwt-payload.type';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { SessionRequest } from '../auth/types/session-request.type';
 import { UpdateTestSessionDto } from './dto/update-test-session.dto';
 import { TestSessionsService } from './test-sessions.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(SessionAuthGuard)
 @Controller()
 export class TestSessionsController {
   constructor(private readonly testSessionsService: TestSessionsService) {}
 
   @Post('tests/:testId/start-session')
-  startSession(@CurrentUser() user: JwtPayload, @Param('testId') testId: string) {
-    return this.testSessionsService.startSession(user.sub, testId);
+  startSession(@Req() req: SessionRequest, @Param('testId') testId: string) {
+    return this.testSessionsService.startSession(req.session.userId!, testId);
   }
 
   @Get('test-sessions/:sessionId')
-  getSession(@CurrentUser() user: JwtPayload, @Param('sessionId') sessionId: string) {
-    return this.testSessionsService.getSession(user.sub, sessionId);
+  getSession(@Req() req: SessionRequest, @Param('sessionId') sessionId: string) {
+    return this.testSessionsService.getSession(req.session.userId!, sessionId);
   }
 
   @Patch('test-sessions/:sessionId')
-  updateSession(
-    @CurrentUser() user: JwtPayload,
-    @Param('sessionId') sessionId: string,
-    @Body() dto: UpdateTestSessionDto,
-  ) {
-    return this.testSessionsService.updateSession(user.sub, sessionId, dto);
+  updateSession(@Req() req: SessionRequest, @Param('sessionId') sessionId: string, @Body() dto: UpdateTestSessionDto) {
+    return this.testSessionsService.updateSession(req.session.userId!, sessionId, dto);
   }
 
   @Post('test-sessions/:sessionId/submit')
-  submitSession(@CurrentUser() user: JwtPayload, @Param('sessionId') sessionId: string) {
-    return this.testSessionsService.submitSession(user.sub, sessionId);
+  submitSession(@Req() req: SessionRequest, @Param('sessionId') sessionId: string) {
+    return this.testSessionsService.submitSession(req.session.userId!, sessionId);
   }
 }

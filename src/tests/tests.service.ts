@@ -25,9 +25,10 @@ export class TestsService {
     const tests = await this.testModel.find({ examId: exam._id, isActive: true }).exec();
     const latestAttemptByTestId = await this.findLatestAttemptsByTestId(tests, userId);
 
-    return tests.map((test) => {
+    const mappedTests = tests.map((test) => {
       const questionsCount = test.sections.reduce((count, section) => count + section.questionIds.length, 0);
       const latestAttempt = latestAttemptByTestId.get(test.id);
+      const isAttempted = latestAttempt ? this.isAttemptCompleted(latestAttempt) : false;
 
       return {
         id: test.id,
@@ -41,12 +42,19 @@ export class TestsService {
         totalMarks: test.totalMarks,
         isActive: test.isActive,
         expiresAt: test.expiresAt,
-        hasAttempted: Boolean(latestAttempt),
-        latestAttemptId: latestAttempt ? String(latestAttempt._id) : null,
-        latestScore: latestAttempt?.score ?? null,
-        attemptedAt: latestAttempt?.createdAt.toISOString().slice(0, 10) ?? null,
+        sessionId: latestAttempt ? String(latestAttempt._id) : null,
+        sessionStatus: latestAttempt ? this.getAttemptStatus(latestAttempt) : 'not_started',
+        isAttempted,
+        latestScore: isAttempted ? latestAttempt?.score ?? 0 : null,
+        attemptedAt: isAttempted ? latestAttempt?.submittedAt?.toISOString().slice(0, 10) ?? latestAttempt?.createdAt.toISOString().slice(0, 10) ?? null : null,
       };
     });
+
+    return {
+      examId: exam.slug,
+      availableTests: mappedTests.filter((test) => !test.isAttempted),
+      attemptedTests: mappedTests.filter((test) => test.isAttempted),
+    };
   }
 
   async findById(testId: string) {
@@ -68,7 +76,7 @@ export class TestsService {
         testId: { $in: tests.map((test) => test._id) },
       })
       .sort({ createdAt: -1 })
-      .select('_id testId score createdAt')
+      .select('_id testId score createdAt submittedAt status startTime duration')
       .lean()
       .exec();
 
@@ -82,5 +90,25 @@ export class TestsService {
     }
 
     return latestAttemptByTestId;
+  }
+
+  private isAttemptCompleted(attempt: {
+    status: 'active' | 'submitted' | 'expired';
+    startTime: Date;
+    duration: number;
+  }) {
+    return attempt.status === 'submitted' || attempt.status === 'expired' || this.hasExceededDuration(attempt);
+  }
+
+  private getAttemptStatus(attempt: {
+    status: 'active' | 'submitted' | 'expired';
+    startTime: Date;
+    duration: number;
+  }) {
+    return this.hasExceededDuration(attempt) && attempt.status === 'active' ? 'expired' : attempt.status;
+  }
+
+  private hasExceededDuration(attempt: { startTime: Date; duration: number }) {
+    return (Date.now() - attempt.startTime.getTime()) / 1000 >= attempt.duration * 60;
   }
 }
