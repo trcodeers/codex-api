@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -16,7 +16,7 @@ export class AuthService {
 
   async register(dto: RegisterDto, req: SessionRequest) {
     const user = await this.usersService.create(dto);
-    this.attachSessionUser(req, user.id);
+    await this.attachSessionUser(req, user.id);
     return this.buildAuthResponse(user);
   }
 
@@ -31,20 +31,42 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    this.attachSessionUser(req, user.id);
+    await this.attachSessionUser(req, user.id);
     return this.buildAuthResponse(user);
   }
 
   async getSessionUser(userId: string) {
     const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Unauthorized');
+    }
     return {
       success: true,
       user: this.serializeUser(user),
     };
   }
 
-  private attachSessionUser(req: SessionRequest, userId: string) {
-    req.session.userId = userId;
+  private async attachSessionUser(req: SessionRequest, userId: string) {
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((regenerateError) => {
+        if (regenerateError) {
+          reject(regenerateError);
+          return;
+        }
+
+        req.session.userId = userId;
+        req.session.save((saveError) => {
+          if (saveError) {
+            reject(saveError);
+            return;
+          }
+
+          resolve();
+        });
+      });
+    }).catch((error: Error) => {
+      throw new InternalServerErrorException(`Unable to create user session: ${error.message}`);
+    });
   }
 
   private buildAuthResponse(user: UserDocument) {

@@ -35,6 +35,8 @@ The API now uses cookie-backed sessions alongside JWT responses:
 - `POST /api/auth/login` authenticates and stores `userId` in the session.
 - `GET /api/auth/me` returns the currently authenticated session user.
 
+User login sessions are persisted in MongoDB through the `userSessions` collection, so session state survives Nest restarts instead of relying on the default in-memory store.
+
 Configure session behavior with these environment variables:
 - `SESSION_SECRET`
 - `SESSION_COOKIE_NAME`

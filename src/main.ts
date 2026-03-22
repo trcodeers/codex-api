@@ -6,9 +6,12 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { DatabaseSeederService } from './database/database.seeder.service';
 
+const MongoStore = require('connect-mongo');
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const sessionMaxAge = configService.get<number>('session.maxAge', 604800000);
 
   app.setGlobalPrefix('api');
   app.enableCors({
@@ -23,9 +26,14 @@ async function bootstrap() {
       name: configService.get<string>('session.cookieName', 'mockprep.sid'),
       resave: false,
       saveUninitialized: false,
+      store: MongoStore.create({
+        mongoUrl: configService.getOrThrow<string>('mongo.uri'),
+        collectionName: 'userSessions',
+        ttl: Math.ceil(sessionMaxAge / 1000),
+      }),
       cookie: {
         httpOnly: true,
-        maxAge: configService.get<number>('session.maxAge', 604800000),
+        maxAge: sessionMaxAge,
         sameSite: configService.get<'lax' | 'strict' | 'none'>('session.sameSite', 'lax'),
         secure: configService.get<boolean>('session.secure', false),
       },
@@ -43,7 +51,7 @@ async function bootstrap() {
   const seederService = app.get(DatabaseSeederService);
   await seederService.seedOnStartup();
 
-  const port = configService.get<number>('port', 4000);
+  const port = process.env.PORT || 4000;
   await app.listen(port);
 }
 
