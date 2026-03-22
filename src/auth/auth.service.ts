@@ -1,10 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Request } from 'express';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { SessionRequest } from './types/session-request.type';
 import { UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
@@ -14,13 +14,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterDto, req: Request) {
+  async register(dto: RegisterDto, req: SessionRequest) {
     const user = await this.usersService.create(dto);
     this.attachSessionUser(req, user.id);
     return this.buildAuthResponse(user);
   }
 
-  async login(dto: LoginDto, req: Request) {
+  async login(dto: LoginDto, req: SessionRequest) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -43,7 +43,7 @@ export class AuthService {
     };
   }
 
-  private attachSessionUser(req: Request, userId: string) {
+  private attachSessionUser(req: SessionRequest, userId: string) {
     req.session.userId = userId;
   }
 
