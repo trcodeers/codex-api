@@ -24,7 +24,7 @@
     "class-validator": "^0.14.1",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
-    "express-session": "^1.18.1",
+    "express-session": "^1.19.0",
     "mongoose": "^8.9.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
