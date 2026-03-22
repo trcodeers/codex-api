@@ -1,4 +1,5 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Req } from '@nestjs/common';
+import { SessionRequest } from '../auth/types/session-request.type';
 import { ExamsService } from './exams.service';
 import { TestsService } from '../tests/tests.service';
 
@@ -15,7 +16,7 @@ export class ExamsController {
   }
 
   @Get(':examId/tests')
-  getTestsByExam(@Param('examId') examId: string) {
-    return this.testsService.findByExamId(examId);
+  getTestsByExam(@Param('examId') examId: string, @Req() req: SessionRequest) {
+    return this.testsService.findByExamId(examId, req.session.userId);
   }
 }
